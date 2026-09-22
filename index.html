@@ -18,6 +18,11 @@
         <input type="file" id="file-input" accept="application/pdf" hidden />
         <span id="file-drop-label">點擊選擇 PDF，或將檔案拖曳到這裡</span>
       </label>
+
+      <div class="progress-wrap" id="progress-wrap" hidden>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <span id="progress-label">處理中…</span>
+      </div>
     </section>
 
     <section class="panel" id="options-panel" hidden>
@@ -44,11 +49,6 @@
             <button class="btn small" id="reset-btn">重設</button>
           </div>
         </div>
-      </div>
-
-      <div class="progress-wrap" id="progress-wrap" hidden>
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-        <span id="progress-label">處理中…</span>
       </div>
     </section>
 

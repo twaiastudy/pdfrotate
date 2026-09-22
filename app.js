@@ -50,80 +50,91 @@ function updateThumbTransform(pageState) {
 }
 
 async function loadPdf(file) {
-  originalFileName = file.name.replace(/\.pdf$/i, "");
-  originalBytes = new Uint8Array(await file.arrayBuffer());
+  fileDrop.classList.add("disabled");
+  setProgress(0, 1, "讀取檔案中…");
 
-  const loadingTask = pdfjsLib.getDocument({ data: originalBytes.slice() });
-  const pdf = await loadingTask.promise;
-  loadedPdf = pdf;
+  try {
+    originalFileName = file.name.replace(/\.pdf$/i, "");
+    originalBytes = new Uint8Array(await file.arrayBuffer());
 
-  pages = [];
-  pagesGrid.innerHTML = "";
+    setProgress(0, 1, "解析 PDF 中…");
+    const loadingTask = pdfjsLib.getDocument({ data: originalBytes.slice() });
+    const pdf = await loadingTask.promise;
+    loadedPdf = pdf;
 
-  const targetWidth = 320;
+    pages = [];
+    pagesGrid.innerHTML = "";
 
-  for (let i = 0; i < pdf.numPages; i++) {
-    const page = await pdf.getPage(i + 1);
-    const baseViewport = page.getViewport({ scale: 1 });
-    const scale = targetWidth / baseViewport.width;
-    const viewport = page.getViewport({ scale });
+    const targetWidth = 320;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d");
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    for (let i = 0; i < pdf.numPages; i++) {
+      setProgress(i, pdf.numPages, `載入頁面預覽中… ${i + 1}/${pdf.numPages}`);
+      const page = await pdf.getPage(i + 1);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scale = targetWidth / baseViewport.width;
+      const viewport = page.getViewport({ scale });
 
-    const card = document.createElement("div");
-    card.className = "page-card";
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
 
-    const thumbWrap = document.createElement("div");
-    thumbWrap.className = "page-thumb-wrap";
-    thumbWrap.appendChild(canvas);
+      const card = document.createElement("div");
+      card.className = "page-card";
 
-    const label = document.createElement("div");
-    label.className = "page-label";
+      const thumbWrap = document.createElement("div");
+      thumbWrap.className = "page-thumb-wrap";
+      thumbWrap.appendChild(canvas);
 
-    const controls = document.createElement("div");
-    controls.className = "page-controls";
-    const rotLeft = document.createElement("button");
-    rotLeft.className = "btn small";
-    rotLeft.textContent = "⟲ -90°";
-    const rotRight = document.createElement("button");
-    rotRight.className = "btn small";
-    rotRight.textContent = "⟳ +90°";
-    controls.append(rotLeft, rotRight);
+      const label = document.createElement("div");
+      label.className = "page-label";
 
-    card.append(thumbWrap, label, controls);
-    pagesGrid.appendChild(card);
+      const controls = document.createElement("div");
+      controls.className = "page-controls";
+      const rotLeft = document.createElement("button");
+      rotLeft.className = "btn small";
+      rotLeft.textContent = "⟲ -90°";
+      const rotRight = document.createElement("button");
+      rotRight.className = "btn small";
+      rotRight.textContent = "⟳ +90°";
+      controls.append(rotLeft, rotRight);
 
-    const pageState = {
-      index: i,
-      originalRotation: page.rotate,
-      extraRotation: 0,
-      canvas,
-      labelEl: label,
-      detectedAngle: null,
-      confidence: null,
-    };
-    pages.push(pageState);
+      card.append(thumbWrap, label, controls);
+      pagesGrid.appendChild(card);
 
-    rotLeft.addEventListener("click", () => {
-      pageState.extraRotation = normalizeAngle(pageState.extraRotation - 90);
+      const pageState = {
+        index: i,
+        originalRotation: page.rotate,
+        extraRotation: 0,
+        canvas,
+        labelEl: label,
+        detectedAngle: null,
+        confidence: null,
+      };
+      pages.push(pageState);
+
+      rotLeft.addEventListener("click", () => {
+        pageState.extraRotation = normalizeAngle(pageState.extraRotation - 90);
+        updateThumbTransform(pageState);
+      });
+      rotRight.addEventListener("click", () => {
+        pageState.extraRotation = normalizeAngle(pageState.extraRotation + 90);
+        updateThumbTransform(pageState);
+      });
+
       updateThumbTransform(pageState);
-    });
-    rotRight.addEventListener("click", () => {
-      pageState.extraRotation = normalizeAngle(pageState.extraRotation + 90);
-      updateThumbTransform(pageState);
-    });
+    }
 
-    updateThumbTransform(pageState);
+    setProgress(pdf.numPages, pdf.numPages, "載入完成");
+    optionsPanel.hidden = false;
+    pagesPanel.hidden = false;
+    downloadPanel.hidden = false;
+    fileDropLabel.textContent = `已載入：${file.name}（共 ${pdf.numPages} 頁）`;
+  } finally {
+    hideProgress();
+    fileDrop.classList.remove("disabled");
   }
-
-  optionsPanel.hidden = false;
-  pagesPanel.hidden = false;
-  downloadPanel.hidden = false;
-  fileDropLabel.textContent = `已載入：${file.name}（共 ${pdf.numPages} 頁）`;
 }
 
 async function renderDetectionCanvas(pageIndex) {
