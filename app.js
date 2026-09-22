@@ -1,7 +1,6 @@
-import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs";
+import * as pdfjsLib from "./vendor/pdf.min.mjs";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.mjs";
 
 const { PDFDocument, degrees } = window.PDFLib;
 
@@ -21,7 +20,10 @@ const progressLabel = document.getElementById("progress-label");
 
 let originalBytes = null;
 let originalFileName = "document.pdf";
+let loadedPdf = null;
 let pages = []; // { originalRotation, extraRotation, canvas }
+
+const DETECT_WIDTH = 1200; // higher-res render used only for OSD orientation detection
 
 function normalizeAngle(angle) {
   return ((angle % 360) + 360) % 360;
@@ -53,6 +55,7 @@ async function loadPdf(file) {
 
   const loadingTask = pdfjsLib.getDocument({ data: originalBytes.slice() });
   const pdf = await loadingTask.promise;
+  loadedPdf = pdf;
 
   pages = [];
   pagesGrid.innerHTML = "";
@@ -123,18 +126,41 @@ async function loadPdf(file) {
   fileDropLabel.textContent = `已載入：${file.name}（共 ${pdf.numPages} 頁）`;
 }
 
+async function renderDetectionCanvas(pageIndex) {
+  const page = await loadedPdf.getPage(pageIndex + 1);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const scale = DETECT_WIDTH / baseViewport.width;
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d");
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return canvas;
+}
+
 async function detectOrientation() {
   if (pages.length === 0) return;
   detectBtn.disabled = true;
 
-  const worker = await Tesseract.createWorker();
+  const worker = await Tesseract.createWorker({
+    workerPath: "./vendor/worker.min.js",
+    corePath: "./vendor/tesseract-core/",
+    langPath: "./vendor/lang/",
+  });
 
   try {
+    setProgress(0, pages.length, "載入方向偵測模型…");
+    await worker.loadLanguage("osd");
+    await worker.initialize("osd", Tesseract.OEM.TESSERACT_ONLY);
+
     for (let i = 0; i < pages.length; i++) {
       setProgress(i, pages.length, `偵測方向中… 第 ${i + 1}/${pages.length} 頁`);
       const pageState = pages[i];
       try {
-        const { data } = await worker.detect(pageState.canvas);
+        const detectCanvas = await renderDetectionCanvas(i);
+        const { data } = await worker.detect(detectCanvas);
         const angle = normalizeAngle(Math.round((data.orientation_degrees ?? 0) / 90) * 90);
         pageState.detectedAngle = angle;
         pageState.confidence = data.orientation_confidence ?? 0;
