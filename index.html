@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PDF 掃描檔自動轉正</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>PDF 掃描檔自動轉正</h1>
+      <p class="subtitle">完全在瀏覽器端執行，檔案不會上傳到任何伺服器。</p>
+    </header>
+
+    <section class="panel" id="upload-panel">
+      <label class="file-drop" id="file-drop">
+        <input type="file" id="file-input" accept="application/pdf" hidden />
+        <span id="file-drop-label">點擊選擇 PDF，或將檔案拖曳到這裡</span>
+      </label>
+    </section>
+
+    <section class="panel" id="options-panel" hidden>
+      <div class="options-row">
+        <fieldset class="mode-select">
+          <legend>旋轉模式</legend>
+          <label>
+            <input type="radio" name="mode" value="per-page" checked />
+            各頁獨立自動偵測旋轉
+          </label>
+          <label>
+            <input type="radio" name="mode" value="uniform" />
+            整份文件套用同一個方向（取多數頁偵測結果）
+          </label>
+        </fieldset>
+
+        <div class="actions">
+          <button id="detect-btn" class="btn primary">自動偵測方向</button>
+          <div class="quick-rotate">
+            <span>手動整份旋轉：</span>
+            <button class="btn small" data-quick-rotate="90">+90°</button>
+            <button class="btn small" data-quick-rotate="180">180°</button>
+            <button class="btn small" data-quick-rotate="270">-90°</button>
+            <button class="btn small" id="reset-btn">重設</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-wrap" id="progress-wrap" hidden>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <span id="progress-label">處理中…</span>
+      </div>
+    </section>
+
+    <section class="panel" id="pages-panel" hidden>
+      <h2>頁面預覽（可點擊縮圖左右旋轉按鈕手動修正）</h2>
+      <div class="pages-grid" id="pages-grid"></div>
+    </section>
+
+    <section class="panel" id="download-panel" hidden>
+      <button id="download-btn" class="btn primary large">下載轉正後的 PDF</button>
+    </section>
+
+    <footer>
+      <p>技術：<a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener">pdf.js</a> ·
+      <a href="https://pdf-lib.js.org/" target="_blank" rel="noopener">pdf-lib</a> ·
+      <a href="https://tesseract.projectnaptha.com/" target="_blank" rel="noopener">Tesseract.js</a>（純前端 OCR 方向偵測）</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
